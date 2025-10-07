@@ -22,12 +22,15 @@ export interface ShopifyLineItem {
 export interface ShopifyAddress {
   first_name?: string;
   last_name?: string;
+  name?: string;
   company?: string;
   address1?: string;
   address2?: string;
   city?: string;
   province?: string;
+  province_code?: string;
   country?: string;
+  country_code?: string;
   zip?: string;
   phone?: string;
 }

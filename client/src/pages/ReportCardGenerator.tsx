@@ -1,11 +1,8 @@
 import { useState, useEffect } from "react";
 import { ShopifyOrder } from "@shared/schema";
-import { SAMPLE_ORDER } from "@/lib/constants";
 import { generateReportCardHTML } from "@/lib/htmlGenerator";
 import Header from "@/components/Header";
 import PrintPreview from "@/components/PrintPreview";
-import SettingsPanel, { RenderMode } from "@/components/SettingsPanel";
-import OrderInput from "@/components/OrderInput";
 
 // Define the shape of the mock Shopify global
 declare global {
@@ -29,20 +26,16 @@ export default function ReportCardGenerator() {
   const [isDevMode, setIsDevMode] = useState<boolean>(false);
 
   // Dev Mode State
-  const [orderJson, setOrderJson] = useState<string>(
-    JSON.stringify({ order: SAMPLE_ORDER }, null, 2)
-  );
-  const [renderMode, setRenderMode] = useState<RenderMode>(RenderMode.DATA_URL);
-  const [serverUrl, setServerUrl] = useState<string>("");
+  const [orderNumber, setOrderNumber] = useState<string>("");
 
-  // 1. Check for Dev Mode on initial render
+  // 1. Check for Dev Mode on initial render - default to dev mode
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const devModeEnabled = params.get("dev") === "true";
+    const devModeEnabled = params.get("dev") !== "false"; // Default to true unless explicitly set to false
     setIsDevMode(devModeEnabled);
 
     if (devModeEnabled) {
-      setStatusMessage("Developer mode active. Paste order JSON and click Generate.");
+      setStatusMessage("Enter an order number to load from Shopify.");
     } else {
       setStatusMessage("Loading order data...");
     }
@@ -59,7 +52,7 @@ export default function ReportCardGenerator() {
     if (orderNumber && /^\d+$/.test(orderNumber)) {
       // Fetch order from Shopify API
       setStatusMessage(`Fetching order #${orderNumber}...`);
-      fetch(`/${orderNumber}`)
+      fetch(`/api/orders/${orderNumber}`)
         .then(response => {
           if (!response.ok) {
             throw new Error(`Failed to fetch order: ${response.statusText}`);
@@ -84,20 +77,11 @@ export default function ReportCardGenerator() {
           throw new Error("No order selected in Shopify Admin.");
         }
         const orderId = selectedItems[0].id;
-
-        if (orderId === SAMPLE_ORDER.id) {
-          setOrder(SAMPLE_ORDER);
-          setStatusMessage(`Loaded data for order #${SAMPLE_ORDER.order_number}.`);
-        } else {
-          throw new Error(
-            `Order with ID ${orderId} not found. Only sample order ${SAMPLE_ORDER.id} is supported.`
-          );
-        }
+        // In production, this would fetch the order from Shopify
+        throw new Error(`Shopify Admin integration not fully implemented for order ${orderId}.`);
       } catch (e) {
-        const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
-        setError(errorMessage);
-        setOrder(null);
-        setStatusMessage("Failed to load order data.");
+        // No Shopify context - this is expected in dev mode
+        setStatusMessage("Enter an order number to load from Shopify.");
       }
     }
   }, [isDevMode]);
@@ -138,47 +122,41 @@ export default function ReportCardGenerator() {
     }
   }, [order]);
 
-  // 4. Handle report card generation in Dev Mode
-  const handleGenerate = () => {
+  // 4. Handle order number submission
+  const handleLoadOrder = () => {
     setError(null);
     setOrder(null);
 
-    if (!orderJson.trim()) {
-      setError("JSON input cannot be empty.");
-      setStatusMessage("Error: JSON input is empty.");
+    if (!orderNumber.trim()) {
+      setError("Please enter an order number.");
+      setStatusMessage("Error: Order number is empty.");
       return;
     }
 
-    try {
-      let parsedJson = JSON.parse(orderJson);
-      let orderData: ShopifyOrder;
-
-      // Check if the pasted JSON is wrapped in an "order" key
-      if (
-        parsedJson.hasOwnProperty("order") &&
-        typeof parsedJson.order === "object" &&
-        parsedJson.order !== null
-      ) {
-        orderData = parsedJson.order as ShopifyOrder;
-      } else {
-        orderData = parsedJson as ShopifyOrder;
-      }
-
-      // Basic validation
-      if (!orderData.id || !orderData.line_items) {
-        throw new Error(
-          'Invalid or incomplete order JSON. Missing required fields like "id" or "line_items".'
-        );
-      }
-      setOrder(orderData);
-    } catch (e) {
-      const errorMessage =
-        e instanceof Error
-          ? `JSON Parse Error: ${e.message}`
-          : "An unknown error occurred while parsing JSON.";
-      setError(errorMessage);
-      setStatusMessage("Error: Failed to parse JSON.");
+    if (!/^\d+$/.test(orderNumber.trim())) {
+      setError("Order number must be numeric.");
+      setStatusMessage("Error: Invalid order number format.");
+      return;
     }
+
+    setStatusMessage(`Fetching order #${orderNumber}...`);
+    fetch(`/api/orders/${orderNumber}`)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Failed to fetch order: ${response.statusText}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        setOrder(data.order);
+        setStatusMessage(`Loaded data for order #${orderNumber}.`);
+      })
+      .catch(e => {
+        const errorMessage = e instanceof Error ? e.message : "Failed to fetch order.";
+        setError(errorMessage);
+        setOrder(null);
+        setStatusMessage("Failed to load order data.");
+      });
   };
 
   return (
@@ -187,19 +165,39 @@ export default function ReportCardGenerator() {
       <main className="flex-1 flex overflow-hidden">
         {isDevMode ? (
           <>
-            <aside className="w-full md:w-1/3 flex flex-col border-r border-[#777] overflow-y-auto">
-              <SettingsPanel
-                renderMode={renderMode}
-                setRenderMode={setRenderMode}
-                serverUrl={serverUrl}
-                setServerUrl={setServerUrl}
-              />
-              <OrderInput
-                orderJson={orderJson}
-                setOrderJson={setOrderJson}
-                onGenerate={handleGenerate}
-                error={error}
-              />
+            <aside className="w-full md:w-1/3 flex flex-col border-r border-[#777] overflow-y-auto p-6">
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold mb-4">Load Order</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="order-number" className="block text-sm font-medium mb-2">
+                      Order Number
+                    </label>
+                    <input
+                      id="order-number"
+                      type="text"
+                      data-testid="input-order-number"
+                      value={orderNumber}
+                      onChange={(e) => setOrderNumber(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleLoadOrder()}
+                      placeholder="e.g., 1217"
+                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <button
+                    data-testid="button-load-order"
+                    onClick={handleLoadOrder}
+                    className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors"
+                  >
+                    Load Order
+                  </button>
+                  {error && (
+                    <div className="p-3 bg-red-900/50 text-red-300 rounded-md text-sm">
+                      {error}
+                    </div>
+                  )}
+                </div>
+              </div>
             </aside>
             <div className="hidden md:flex md:w-2/3 flex-col">
               <PrintPreview printUrl={printUrl} statusMessage={statusMessage} />

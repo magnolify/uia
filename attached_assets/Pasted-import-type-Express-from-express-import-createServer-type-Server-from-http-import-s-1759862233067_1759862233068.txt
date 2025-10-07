@@ -5,7 +5,7 @@ import express from "express";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Fetch Shopify order by order number
-  app.get("/api/orders/:orderNumber", async (req, res) => {
+  app.get("/:orderNumber", async (req, res) => {
     const orderNumber = req.params.orderNumber;
     const adminToken = process.env.SHOPIFY_ADMIN_TOKEN;
     const shopDomain = process.env.SHOPIFY_SHOP_DOMAIN;
