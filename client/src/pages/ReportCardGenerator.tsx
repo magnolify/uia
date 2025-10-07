@@ -34,25 +34,36 @@ export default function ReportCardGenerator() {
     const devModeEnabled = params.get("dev") !== "false"; // Default to true unless explicitly set to false
     setIsDevMode(devModeEnabled);
 
-    if (devModeEnabled) {
-      setStatusMessage("Enter an order number to load from Shopify.");
+    // Check if we have an order number in the URL path
+    const pathParts = window.location.pathname.split('/');
+    const orderNumberFromPath = pathParts[pathParts.length - 1];
+
+    if (orderNumberFromPath && /^\d+$/.test(orderNumberFromPath)) {
+      setOrderNumber(orderNumberFromPath);
+      if (devModeEnabled) {
+        setStatusMessage(`Auto-loading order #${orderNumberFromPath}...`);
+      } else {
+        setStatusMessage("Loading order data...");
+      }
     } else {
-      setStatusMessage("Loading order data...");
+      if (devModeEnabled) {
+        setStatusMessage("Enter an order number to load from Shopify.");
+      } else {
+        setStatusMessage("Loading order data...");
+      }
     }
   }, []);
 
-  // 2. Load data in Live Mode
+  // 2. Load data in Live Mode or auto-load from URL
   useEffect(() => {
-    if (isDevMode) return; // Don't run in dev mode
-
     // Check if we have an order number in the URL path
     const pathParts = window.location.pathname.split('/');
-    const orderNumber = pathParts[pathParts.length - 1];
+    const orderNumberFromPath = pathParts[pathParts.length - 1];
 
-    if (orderNumber && /^\d+$/.test(orderNumber)) {
-      // Fetch order from Shopify API
-      setStatusMessage(`Fetching order #${orderNumber}...`);
-      fetch(`/api/orders/${orderNumber}`)
+    if (orderNumberFromPath && /^\d+$/.test(orderNumberFromPath)) {
+      // Auto-load order from URL path
+      setStatusMessage(`Fetching order #${orderNumberFromPath}...`);
+      fetch(`/api/orders/${orderNumberFromPath}`)
         .then(response => {
           if (!response.ok) {
             throw new Error(`Failed to fetch order: ${response.statusText}`);
@@ -61,7 +72,7 @@ export default function ReportCardGenerator() {
         })
         .then(data => {
           setOrder(data.order);
-          setStatusMessage(`Loaded data for order #${orderNumber}.`);
+          setStatusMessage(`Loaded data for order #${orderNumberFromPath}.`);
         })
         .catch(e => {
           const errorMessage = e instanceof Error ? e.message : "Failed to fetch order.";
@@ -69,8 +80,8 @@ export default function ReportCardGenerator() {
           setOrder(null);
           setStatusMessage("Failed to load order data.");
         });
-    } else {
-      // Fallback to Shopify admin selection
+    } else if (!isDevMode) {
+      // Fallback to Shopify admin selection (non-dev mode only)
       try {
         const selectedItems = window.shopify?.data?.selected;
         if (!selectedItems || selectedItems.length === 0) {

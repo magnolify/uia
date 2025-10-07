@@ -109,13 +109,13 @@ export default function PrintPreview({
                 onChange={(e) => onOrderNumberChange?.(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && onLoadOrder?.()}
                 placeholder="Order Number (e.g., 1217)"
-                className="px-3 py-1.5 bg-gray-900 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-200 placeholder-gray-500 text-sm min-w-0 flex-shrink"
+                className="px-3 py-1.5 bg-gray-900 border border-gray-700 rounded-md focus:outline-none text-gray-200 placeholder-gray-500 text-sm min-w-0 flex-shrink"
               />
               <Button
                 data-testid="button-load-order"
                 onClick={onLoadOrder}
                 size="sm"
-                className="gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold flex-shrink-0"
+                className="gap-2 bg-[#f2633a] hover:bg-[#d9532f] text-white font-bold flex-shrink-0"
               >
                 Load Order
               </Button>
