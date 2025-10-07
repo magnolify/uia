@@ -81,9 +81,24 @@ export default function ReportCardGenerator() {
       setStatusMessage("Generating print preview...");
       try {
         const htmlContent = generateReportCardHTML(order);
-        const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`;
-        setPrintUrl(dataUrl);
-        setStatusMessage(`Successfully generated report cards for order ${order.name}.`);
+        
+        // Post HTML to server and get a same-origin URL
+        fetch('/api/preview-html', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ html: htmlContent })
+        })
+          .then(response => response.blob())
+          .then(blob => {
+            const blobUrl = URL.createObjectURL(blob);
+            setPrintUrl(blobUrl);
+            setStatusMessage(`Successfully generated report cards for order ${order.name}.`);
+          })
+          .catch(err => {
+            setError(`Preview generation failed: ${err.message}`);
+            setPrintUrl("");
+            setStatusMessage("HTML generation failed.");
+          });
       } catch (e) {
         const errorMessage = e instanceof Error ? e.message : "Failed to generate HTML.";
         setError(errorMessage);
