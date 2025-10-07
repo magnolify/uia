@@ -52,26 +52,53 @@ export default function ReportCardGenerator() {
   useEffect(() => {
     if (isDevMode) return; // Don't run in dev mode
 
-    try {
-      const selectedItems = window.shopify?.data?.selected;
-      if (!selectedItems || selectedItems.length === 0) {
-        throw new Error("No order selected in Shopify Admin.");
-      }
-      const orderId = selectedItems[0].id;
+    // Check if we have an order number in the URL path
+    const pathParts = window.location.pathname.split('/');
+    const orderNumber = pathParts[pathParts.length - 1];
 
-      if (orderId === SAMPLE_ORDER.id) {
-        setOrder(SAMPLE_ORDER);
-        setStatusMessage(`Loaded data for order #${SAMPLE_ORDER.order_number}.`);
-      } else {
-        throw new Error(
-          `Order with ID ${orderId} not found. Only sample order ${SAMPLE_ORDER.id} is supported.`
-        );
+    if (orderNumber && /^\d+$/.test(orderNumber)) {
+      // Fetch order from Shopify API
+      setStatusMessage(`Fetching order #${orderNumber}...`);
+      fetch(`/${orderNumber}`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`Failed to fetch order: ${response.statusText}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          setOrder(data.order);
+          setStatusMessage(`Loaded data for order #${orderNumber}.`);
+        })
+        .catch(e => {
+          const errorMessage = e instanceof Error ? e.message : "Failed to fetch order.";
+          setError(errorMessage);
+          setOrder(null);
+          setStatusMessage("Failed to load order data.");
+        });
+    } else {
+      // Fallback to Shopify admin selection
+      try {
+        const selectedItems = window.shopify?.data?.selected;
+        if (!selectedItems || selectedItems.length === 0) {
+          throw new Error("No order selected in Shopify Admin.");
+        }
+        const orderId = selectedItems[0].id;
+
+        if (orderId === SAMPLE_ORDER.id) {
+          setOrder(SAMPLE_ORDER);
+          setStatusMessage(`Loaded data for order #${SAMPLE_ORDER.order_number}.`);
+        } else {
+          throw new Error(
+            `Order with ID ${orderId} not found. Only sample order ${SAMPLE_ORDER.id} is supported.`
+          );
+        }
+      } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
+        setError(errorMessage);
+        setOrder(null);
+        setStatusMessage("Failed to load order data.");
       }
-    } catch (e) {
-      const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
-      setError(errorMessage);
-      setOrder(null);
-      setStatusMessage("Failed to load order data.");
     }
   }, [isDevMode]);
 
