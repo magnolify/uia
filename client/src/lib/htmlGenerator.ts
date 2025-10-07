@@ -1,161 +1,155 @@
+
 import { ShopifyOrder, ShopifyLineItem, ShopifyLineItemProperty } from "@shared/schema";
 
-// Helper function to find a property value by name (case-insensitive, trimmed)
-function findPropertyValue(properties: ShopifyLineItemProperty[], name: string): string {
+const escapeHtml = (unsafe: string | null | undefined): string => {
+  if (unsafe === null || unsafe === undefined) {
+    return '';
+  }
+  return String(unsafe)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};
+
+const findPropertyValue = (properties: ShopifyLineItemProperty[], name: string): string => {
   const prop = properties.find(p => 
     p.name.trim().toLowerCase() === name.trim().toLowerCase()
   );
   return prop?.value?.trim() || '';
-}
+};
 
-// Helper to parse title for additional label info
-function parseTitleForLabel(title: string): string {
-  return title.trim();
-}
+const parseTitleForLabel = (item: ShopifyLineItem): string => {
+  const widthFt = findPropertyValue(item.properties, "Rectangle Width (ft)").replace('ft', '').trim();
+  const widthIn = findPropertyValue(item.properties, "Rectangle Width (in)").replace('in', '').trim();
+  const lengthFt = findPropertyValue(item.properties, "Rectangle Length (ft)").replace('ft', '').trim();
+  const lengthIn = findPropertyValue(item.properties, "Rectangle Length (in)").replace('in', '').trim();
+  const location = findPropertyValue(item.properties, "Install Location");
+  const rugShape = findPropertyValue(item.properties, "Choose Rug Shape");
+  const thickness = findPropertyValue(item.properties, "Choose Thickness");
 
-// Helper to clean dimension values (remove "ft", "in" suffixes)
-function cleanDimension(value: string): string {
-  return value.replace(/\s*(ft|in|inch|inches|feet)\.?$/i, '').trim();
-}
+  let dimensions = '';
+  if (widthFt !== '0' || widthIn !== '0' || lengthFt !== '0' || lengthIn !== '0') {
+    dimensions = `${widthFt}' ${widthIn}" x ${lengthFt}' ${lengthIn}"`;
+  }
 
-// Generate the order header/summary card
-function generateOrderHeaderHTML(order: ShopifyOrder): string {
-  const customerName = order.customer 
-    ? `${order.customer.first_name || ''} ${order.customer.last_name || ''}`.trim() 
-    : 'N/A';
+  // Fallback for old format if no dimensions found in properties
+  if (!dimensions) {
+    const sizeMatch = item.title.match(/(\d+x\d+)/);
+    if (sizeMatch) {
+      dimensions = sizeMatch[0].replace('x', "' x ") + "'";
+    }
+  }
+
+  let productName = '';
+  if (rugShape && thickness) {
+    productName = `${rugShape} : ${thickness}`;
+  } else {
+    // Fallback for old format
+    productName = item.title.replace(/ - Default_cpc_.*/, '').trim();
+    productName = productName.replace(/\s*\(.*\)\s*/, '').trim();
+  }
+
+  let finalDescription = `Pad: `;
+  if (dimensions) {
+    finalDescription += `${dimensions} - `;
+  }
+  finalDescription += productName;
   
-  const shippingAddr = order.shipping_address;
-  const shippingAddress = shippingAddr
-    ? `
-        ${shippingAddr.company ? `<div><strong>${shippingAddr.company}</strong></div>` : ''}
-        <div>${shippingAddr.first_name || ''} ${shippingAddr.last_name || ''}</div>
-        <div>${shippingAddr.address1 || ''}</div>
-        ${shippingAddr.address2 ? `<div>${shippingAddr.address2}</div>` : ''}
-        <div>${shippingAddr.city || ''}, ${shippingAddr.province || ''} ${shippingAddr.zip || ''}</div>
-        <div>${shippingAddr.country || ''}</div>
-        ${shippingAddr.phone ? `<div>Phone: ${shippingAddr.phone}</div>` : ''}
-      `
-    : '<div>No shipping address</div>';
+  if (location) {
+    finalDescription += ` - ${location}`;
+  }
 
-  const totalItems = order.line_items.reduce((sum, item) => sum + item.quantity, 0);
+  return escapeHtml(finalDescription);
+};
+
+const generateOrderHeaderHTML = (order: ShopifyOrder): string => {
+  const clientName = escapeHtml(order.shipping_address?.name || `${order.customer?.first_name || ''} ${order.customer?.last_name || ''}`.trim());
+  const company = escapeHtml(order.shipping_address?.company || '');
+  const address = escapeHtml(`${order.shipping_address?.address1 || ''}${order.shipping_address?.address2 ? `, ${order.shipping_address.address2}` : ''}`);
+  const cityStateZip = escapeHtml(`${order.shipping_address?.city || ''}, ${order.shipping_address?.province_code || ''} ${order.shipping_address?.zip || ''}`);
+  const poNumber = escapeHtml(order.name);
+  const orderDate = new Date(order.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
   return `
     <div class="card header-card">
-      <div class="header-title">Order Summary</div>
-      <div class="header-grid">
-        <div class="header-section">
-          <div class="section-title">Order Details</div>
-          <div class="detail-row"><span class="label">Order:</span> <span class="value">${order.name}</span></div>
-          <div class="detail-row"><span class="label">Order #:</span> <span class="value">${order.order_number}</span></div>
-          <div class="detail-row"><span class="label">Date:</span> <span class="value">${new Date(order.created_at).toLocaleDateString()}</span></div>
-          <div class="detail-row"><span class="label">Customer:</span> <span class="value">${customerName}</span></div>
-          ${order.customer?.email ? `<div class="detail-row"><span class="label">Email:</span> <span class="value">${order.customer.email}</span></div>` : ''}
-          <div class="detail-row"><span class="label">Total:</span> <span class="value">$${order.total_price}</span></div>
-          <div class="detail-row"><span class="label">Items:</span> <span class="value">${totalItems}</span></div>
-        </div>
-        <div class="header-section">
-          <div class="section-title">Shipping Address</div>
-          ${shippingAddress}
-        </div>
+      <div class="logo">
+        <img src="https://www.itsunderitall.com/cdn/shop/files/UnderItAll_Logo_FeltGrey_350x.png?v=1720724526" alt="UNDERITALL Logo">
       </div>
-      ${order.note ? `
-        <div class="order-note">
-          <div class="section-title">Order Notes</div>
-          <div>${order.note}</div>
-        </div>
-      ` : ''}
-    </div>
-  `;
-}
-
-// Generate individual report card for a line item unit
-function generateItemCardHTML(
-  item: ShopifyLineItem,
-  unitNumber: number,
-  totalUnits: number,
-  orderName: string
-): string {
-  const projectName = findPropertyValue(item.properties, 'Project Name');
-  const rugShape = findPropertyValue(item.properties, 'Choose Rug Shape');
-  const installLocation = findPropertyValue(item.properties, 'Install Location');
-  const customNotes = findPropertyValue(item.properties, 'Custom Notes') || 
-                      findPropertyValue(item.properties, 'Special Instructions');
-  
-  // Get dimensions
-  const width = cleanDimension(findPropertyValue(item.properties, 'Width'));
-  const length = cleanDimension(findPropertyValue(item.properties, 'Length'));
-  const diameter = cleanDimension(findPropertyValue(item.properties, 'Diameter'));
-  
-  let dimensionText = '';
-  if (diameter) {
-    dimensionText = `${diameter} diameter`;
-  } else if (width && length) {
-    dimensionText = `${width} × ${length}`;
-  } else if (width) {
-    dimensionText = `Width: ${width}`;
-  } else if (length) {
-    dimensionText = `Length: ${length}`;
-  }
-
-  return `
-    <div class="card item-card">
-      <div class="card-header">
-        <div class="order-info">${orderName}</div>
-        <div class="unit-badge">${unitNumber} of ${totalUnits}</div>
-      </div>
-      
-      ${projectName ? `<div class="project-name">${projectName}</div>` : ''}
-      
-      <div class="product-title">${parseTitleForLabel(item.title)}</div>
-      
-      ${item.variant_title ? `<div class="variant-title">${item.variant_title}</div>` : ''}
-      ${item.sku ? `<div class="sku">SKU: ${item.sku}</div>` : ''}
-      
-      <div class="properties-grid">
-        ${rugShape ? `
-          <div class="property">
-            <div class="property-label">Shape</div>
-            <div class="property-value">${rugShape}</div>
+      <div class="header-content">
+        <h1 class="header-title">Order Summary</h1>
+        <div class="header-info-grid">
+          <div class="info-col">
+            <div class="info-item"><span class="label">Client:</span> ${clientName}</div>
+            <div class="info-item"><span class="label">Company:</span> ${company}</div>
           </div>
-        ` : ''}
-        ${dimensionText ? `
-          <div class="property">
-            <div class="property-label">Dimensions</div>
-            <div class="property-value">${dimensionText}</div>
+          <div class="info-col">
+            <div class="info-item"><span class="label">PO #:</span> ${poNumber}</div>
+            <div class="info-item"><span class="label">Order Date:</span> ${orderDate}</div>
           </div>
-        ` : ''}
+        </div>
+        <div class="address-info">
+          <span class="label">Shipping To:</span>
+          <div>${address}</div>
+          <div>${cityStateZip}</div>
+        </div>
       </div>
-      
-      ${installLocation ? `
-        <div class="install-location">
-          <div class="install-label">Install Location:</div>
-          <div class="install-value">${installLocation}</div>
+      <div class="footer">
+        <div class="thank-you">THANK YOU FOR YOUR ORDER !</div>
+        <div class="contact-info">
+          Phone: (404) 438-0986 - Email: info@underitall.com
         </div>
-      ` : ''}
-      
-      ${customNotes ? `
-        <div class="custom-notes">
-          <div class="notes-label">Notes:</div>
-          <div class="notes-value">${customNotes}</div>
-        </div>
-      ` : ''}
-      
-      <div class="card-footer">
-        <div class="price">$${item.price}</div>
       </div>
     </div>
   `;
-}
+};
 
-// Main function to generate the complete HTML document
 export function generateReportCardHTML(order: ShopifyOrder): string {
-  const headerCard = generateOrderHeaderHTML(order);
-  
-  const itemCards = order.line_items.flatMap(item => 
-    Array.from({ length: item.quantity }, (_, index) => 
-      generateItemCardHTML(item, index + 1, item.quantity, order.name)
-    )
-  ).join('\n');
+  const clientName = escapeHtml(order.shipping_address?.name || `${order.customer?.first_name || ''} ${order.customer?.last_name || ''}`.trim());
+  const poNumber = escapeHtml(order.name);
+  const packagedDate = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' });
+
+  const orderHeaderHtml = generateOrderHeaderHTML(order);
+
+  const cardsHtml = order.line_items.flatMap((item: ShopifyLineItem) => {
+    const padDescription = parseTitleForLabel(item);
+    const projectName = findPropertyValue(item.properties, 'Project Name');
+    
+    return Array.from({ length: item.quantity }, (_, i) => `
+      <div class="card">
+        <div class="logo">
+          <img src="https://www.itsunderitall.com/cdn/shop/files/UnderItAll_Logo_FeltGrey_350x.png?v=1720724526" alt="UNDERITALL Logo">
+        </div>
+        
+        <div class="info-grid">
+          <div class="info-left">
+            <div><span class="label">Client Name:</span> ${clientName}</div>
+            <div><span class="label">Sidemark:</span> UnderItAll</div>
+          </div>
+          <div class="info-right">
+            <div><span class="label">PO #:</span> ${poNumber}</div>
+            <div><span class="label">Project Name:</span> ${escapeHtml(projectName)}</div>
+          </div>
+        </div>
+        
+        <hr />
+        
+        <div class="pad-description">
+          ${padDescription}
+        </div>
+        
+        <hr />
+        
+        <div class="footer">
+          <div class="thank-you">THANK YOU FOR YOUR ORDER !</div>
+          <div class="contact-info">
+            Phone: (404) 438-0986 - Email: info@underitall.com - Packaged Date: ${packagedDate}
+          </div>
+        </div>
+      </div>
+    `);
+  }).join('');
 
   return `
 <!DOCTYPE html>
@@ -163,324 +157,226 @@ export function generateReportCardHTML(order: ShopifyOrder): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Report Cards - Order ${order.name}</title>
+  <title>Report Cards for Order ${escapeHtml(order.name)}</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: #1f2937;
-      padding: 20px;
+      font-family: 'Inter', sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #1f2937;
+      margin: 0;
+      padding: 1.5rem;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background-color: white;
+      border: 1px solid #e5e7eb;
+      padding: 32px;
+      box-sizing: border-box;
+      width: 8.5in;
+      height: 5.5in;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+      page-break-inside: avoid;
+      color: #111827;
+    }
+
+    .logo {
+      text-align: center;
+      padding-bottom: 24px;
+    }
+
+    .logo img {
+      width: 250px;
+      height: auto;
+      filter: none;
+    }
+
+    .info-grid {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      font-weight: 600;
       color: #1f2937;
     }
-    
-    .card {
-      background: white;
-      border-radius: 8px;
-      padding: 24px;
-      margin: 20px auto;
-      max-width: 800px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+    .info-left, .info-right {
+      width: 48%;
+    }
+
+    .info-left div, .info-right div {
+      margin-bottom: 6px;
     }
     
-    /* Header Card Styles */
-    .header-card {
-      background: white;
+    .info-grid .label {
+      display: inline-block;
+      width: 110px;
+      color: #6b7280;
+      font-weight: 500;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid #e5e7eb;
+      margin: 20px 0;
+    }
+
+    .pad-description {
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 32px;
+      font-weight: 700;
+      color: #111827;
+      line-height: 1.2;
+    }
+    
+    .header-card .header-content {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
     
     .header-title {
-      font-size: 28px;
-      font-weight: 700;
-      margin-bottom: 24px;
-      color: #059669;
       text-align: center;
+      font-size: 36px;
+      font-weight: 700;
+      margin: 0 0 24px 0;
+      color: #111827;
     }
-    
-    .header-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 32px;
-      margin-bottom: 20px;
-    }
-    
-    .header-section {
+
+    .header-info-grid {
       display: flex;
-      flex-direction: column;
-      gap: 8px;
+      justify-content: space-between;
+      margin-bottom: 24px;
     }
     
-    .section-title {
+    .info-col {
       font-size: 16px;
       font-weight: 600;
-      margin-bottom: 12px;
-      color: #374151;
-      border-bottom: 2px solid #059669;
-      padding-bottom: 4px;
+      width: 48%;
     }
     
-    .detail-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 4px 0;
-      font-size: 14px;
-    }
-    
-    .detail-row .label {
-      font-weight: 500;
-      color: #6b7280;
-    }
-    
-    .detail-row .value {
-      font-weight: 600;
-      color: #1f2937;
-    }
-    
-    .order-note {
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 1px solid #e5e7eb;
-    }
-    
-    .order-note > div:last-child {
-      margin-top: 8px;
-      font-size: 14px;
-      color: #4b5563;
-      font-style: italic;
-    }
-    
-    /* Item Card Styles */
-    .item-card {
-      background: white;
-    }
-    
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-      padding-bottom: 12px;
-      border-bottom: 2px solid #059669;
-    }
-    
-    .order-info {
-      font-size: 18px;
-      font-weight: 600;
-      color: #059669;
-    }
-    
-    .unit-badge {
-      background: #059669;
-      color: white;
-      padding: 6px 16px;
-      border-radius: 20px;
-      font-size: 14px;
-      font-weight: 600;
-    }
-    
-    .project-name {
-      font-size: 20px;
-      font-weight: 700;
-      color: #1f2937;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 12px;
-    }
-    
-    .product-title {
-      font-size: 24px;
-      font-weight: 700;
-      color: #1f2937;
+    .info-item {
       margin-bottom: 8px;
     }
-    
-    .variant-title {
+
+    .info-item .label, .address-info .label {
+      color: #6b7280;
+      font-weight: 500;
+      margin-right: 8px;
+    }
+
+    .address-info {
       font-size: 16px;
-      color: #6b7280;
-      margin-bottom: 4px;
-    }
-    
-    .sku {
-      font-size: 14px;
-      color: #9ca3af;
-      font-family: 'Courier New', monospace;
-      margin-bottom: 16px;
-    }
-    
-    .properties-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin: 20px 0;
-      padding: 16px;
-      background: #f9fafb;
-      border-radius: 6px;
-    }
-    
-    .property {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    
-    .property-label {
-      font-size: 12px;
       font-weight: 600;
-      color: #6b7280;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      line-height: 1.5;
     }
     
-    .property-value {
-      font-size: 18px;
-      font-weight: 600;
-      color: #1f2937;
-    }
-    
-    .install-location {
-      margin: 16px 0;
-      padding: 16px;
-      background: #ecfdf5;
-      border-left: 4px solid #059669;
-      border-radius: 4px;
-    }
-    
-    .install-label {
-      font-size: 12px;
-      font-weight: 600;
-      color: #047857;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 6px;
-    }
-    
-    .install-value {
-      font-size: 18px;
-      font-weight: 600;
-      color: #065f46;
-      font-style: italic;
-    }
-    
-    .custom-notes {
-      margin: 16px 0;
-      padding: 12px;
-      background: #fef3c7;
-      border-radius: 4px;
-    }
-    
-    .notes-label {
-      font-size: 12px;
-      font-weight: 600;
-      color: #92400e;
-      text-transform: uppercase;
-      margin-bottom: 6px;
-    }
-    
-    .notes-value {
-      font-size: 14px;
-      color: #78350f;
-    }
-    
-    .card-footer {
-      margin-top: 20px;
-      padding-top: 16px;
-      border-top: 1px solid #e5e7eb;
-      text-align: right;
-    }
-    
-    .price {
-      font-size: 24px;
-      font-weight: 700;
-      color: #059669;
-    }
-    
-    .print-button-container {
+    .footer {
       text-align: center;
-      margin: 40px 0;
     }
-    
+
+    .footer .thank-you {
+      font-weight: 700;
+      font-size: 12px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #4b5563;
+    }
+
+    .footer .contact-info {
+      font-size: 12px;
+      font-weight: 700;
+      color: #4b5563;
+    }
+
     .print-button {
-      background: #059669;
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      padding: 0.75rem 1.5rem;
+      background-color: #f2633a;
       color: white;
       border: none;
-      padding: 16px 48px;
-      font-size: 18px;
-      font-weight: 600;
-      border-radius: 8px;
+      border-radius: 0.5rem;
       cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      transition: background 0.2s;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -2px rgba(0,0,0,.1);
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      transition: background-color 0.2s;
+      z-index: 10;
     }
-    
     .print-button:hover {
-      background: #047857;
+      background-color: #d9532f;
     }
-    
-    /* Print Styles */
+
     @media print {
-      body {
-        background: white;
-        padding: 0;
-      }
-      
-      .card {
-        width: 8.5in;
-        height: 5.5in;
-        max-width: none;
+      @page {
+        size: landscape;
         margin: 0;
-        padding: 0.5in;
-        box-shadow: none;
+      }
+      body {
+        background-color: white !important;
+        padding: 0;
+        margin: 0;
+        -webkit-print-color-adjust: exact;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .container {
+        gap: 0;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        align-items: initial;
+      }
+      .card {
+        width: 100%;
+        height: 100vh;
+        border: none !important;
+        box-shadow: none !important;
         page-break-after: always;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-      }
-      
-      .header-card {
-        height: 100vh;
-      }
-      
-      .item-card {
-        height: 100vh;
-      }
-      
-      .print-button-container {
-        display: none;
-      }
-      
-      * {
+        padding: 32px;
+        box-sizing: border-box;
+        margin: 0;
+        background-color: white !important;
         color: black !important;
       }
-      
-      .header-title {
-        color: #059669 !important;
+      .card * {
+        color: black !important;
       }
-      
-      .order-info,
-      .unit-badge {
-        color: white !important;
-        background: #059669 !important;
+      .card:last-of-type {
+        page-break-after: auto;
       }
-      
-      .price {
-        color: #059669 !important;
+      .logo img {
+        filter: none !important;
+      }
+      hr {
+        border-top: 1px solid #ddd !important;
       }
     }
   </style>
 </head>
 <body>
-  <div class="print-button-container">
-    <button class="print-button" onclick="window.print()">Print Labels</button>
-  </div>
-  
-  ${headerCard}
-  ${itemCards}
-  
-  <div class="print-button-container">
-    <button class="print-button" onclick="window.print()">Print Labels</button>
+  <button class="print-button no-print" onclick="window.print()">Print Labels</button>
+  <div class="container">
+    ${orderHeaderHtml}
+    ${cardsHtml}
   </div>
 </body>
 </html>

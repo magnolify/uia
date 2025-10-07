@@ -62,8 +62,7 @@ export default function PrintPreview({ printUrl, statusMessage }: PrintPreviewPr
             onClick={handlePrint}
             disabled={!printUrl}
             size="sm"
-            variant="outline"
-            className="gap-2"
+            className="gap-2 bg-[#f2633a] hover:bg-[#d9532f] text-white font-bold"
           >
             <Printer className="h-4 w-4" />
             Print

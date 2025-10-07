@@ -176,7 +176,7 @@ export default function PrintSettings({ onApply }: PrintSettingsProps) {
                 </Button>
                 <Button
                   onClick={handleApply}
-                  className="flex-1 bg-[#f2633a] hover:bg-[#d9532f]"
+                  className="flex-1 bg-[#f2633a] hover:bg-[#d9532f] text-white font-bold"
                 >
                   Apply
                 </Button>
