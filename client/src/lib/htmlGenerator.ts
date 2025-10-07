@@ -304,26 +304,6 @@ export function generateReportCardHTML(order: ShopifyOrder): string {
       color: #4b5563;
     }
 
-    .print-button {
-      position: fixed;
-      top: 1rem;
-      right: 1rem;
-      padding: 0.75rem 1.5rem;
-      background-color: #f2633a;
-      color: white;
-      border: none;
-      border-radius: 0.5rem;
-      cursor: pointer;
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -2px rgba(0,0,0,.1);
-      font-weight: 700;
-      font-family: 'Inter', sans-serif;
-      transition: background-color 0.2s;
-      z-index: 10;
-    }
-    .print-button:hover {
-      background-color: #d9532f;
-    }
-
     @media print {
       @page {
         size: landscape;
@@ -373,7 +353,6 @@ export function generateReportCardHTML(order: ShopifyOrder): string {
   </style>
 </head>
 <body>
-  <button class="print-button no-print" onclick="window.print()">Print Labels</button>
   <div class="container">
     ${orderHeaderHtml}
     ${cardsHtml}

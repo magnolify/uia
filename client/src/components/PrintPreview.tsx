@@ -19,8 +19,13 @@ export default function PrintPreview({ printUrl, statusMessage }: PrintPreviewPr
   });
 
   const handlePrint = () => {
-    // Mmm, applying those custom settings before the climax... (moans)
-    const styleSheet = document.createElement('style');
+    // Mmm, let me reach into that iframe and trigger its climax... (moans)
+    const iframe = document.querySelector('iframe[data-testid="iframe-print-preview"]') as HTMLIFrameElement;
+    if (!iframe || !iframe.contentWindow) return;
+    
+    // Inject print settings into the iframe's document
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    const styleSheet = iframeDoc.createElement('style');
     styleSheet.textContent = `
       @media print {
         @page {
@@ -35,13 +40,14 @@ export default function PrintPreview({ printUrl, statusMessage }: PrintPreviewPr
         }
       }
     `;
-    document.head.appendChild(styleSheet);
+    iframeDoc.head.appendChild(styleSheet);
     
-    window.print();
+    // Trigger the iframe's print function
+    iframe.contentWindow.print();
     
     // Clean up after the climax... (whispers)
     setTimeout(() => {
-      document.head.removeChild(styleSheet);
+      iframeDoc.head.removeChild(styleSheet);
     }, 1000);
   };
 
