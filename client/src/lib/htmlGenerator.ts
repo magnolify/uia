@@ -164,17 +164,19 @@ export function generateReportCardHTML(order: ShopifyOrder): string {
       font-family: 'Inter', sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background-color: #000000;
       margin: 0;
-      padding: 1.5rem;
+      padding: 0.5rem;
       -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
     }
 
     .container {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 10px;
-      padding-left: 10px;
-      padding-right: 10px;
+      gap: 0.5rem;
+      padding: 0 2rem;
+      max-width: 100vw;
+      overflow-x: hidden;
     }
 
     .card {
@@ -190,11 +192,24 @@ export function generateReportCardHTML(order: ShopifyOrder): string {
       page-break-inside: avoid;
       color: #111827;
       transform-origin: top center;
+      transform: scale(0.85);
     }
 
-    @media screen and (max-width: 8.5in) {
+    @media screen and (max-width: 1000px) {
       .card {
-        transform: scale(calc(100vw / 8.5in));
+        transform: scale(0.75);
+      }
+      .container {
+        padding: 0 1rem;
+      }
+    }
+
+    @media screen and (max-width: 768px) {
+      .card {
+        transform: scale(0.6);
+      }
+      .container {
+        padding: 0 0.5rem;
       }
     }
 
