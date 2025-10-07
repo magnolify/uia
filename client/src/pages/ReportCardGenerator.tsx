@@ -163,57 +163,23 @@ export default function ReportCardGenerator() {
     <div className="flex flex-col h-screen bg-black text-gray-100 font-['Vazirmatn',_sans-serif]">
       <Header isDevMode={isDevMode} />
       <main className="flex-1 flex overflow-hidden">
-        {isDevMode ? (
-          <>
-            <aside className="w-full md:w-1/3 flex flex-col border-r border-[#777] overflow-y-auto p-6">
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold mb-4">Load Order</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="order-number" className="block text-sm font-medium mb-2">
-                      Order Number
-                    </label>
-                    <input
-                      id="order-number"
-                      type="text"
-                      data-testid="input-order-number"
-                      value={orderNumber}
-                      onChange={(e) => setOrderNumber(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleLoadOrder()}
-                      placeholder="e.g., 1217"
-                      className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <button
-                    data-testid="button-load-order"
-                    onClick={handleLoadOrder}
-                    className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors"
-                  >
-                    Load Order
-                  </button>
-                  {error && (
-                    <div className="p-3 bg-red-900/50 text-red-300 rounded-md text-sm">
-                      {error}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </aside>
-            <div className="hidden md:flex md:w-2/3 flex-col">
-              <PrintPreview printUrl={printUrl} statusMessage={statusMessage} />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {error && !isDevMode ? (
+            <div className="m-4 p-4 bg-red-900/50 text-red-300 rounded-lg flex items-center justify-center text-center h-full">
+              <p>{error}</p>
             </div>
-          </>
-        ) : (
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {error ? (
-              <div className="m-4 p-4 bg-red-900/50 text-red-300 rounded-lg flex items-center justify-center text-center h-full">
-                <p>{error}</p>
-              </div>
-            ) : (
-              <PrintPreview printUrl={printUrl} statusMessage={statusMessage} />
-            )}
-          </div>
-        )}
+          ) : (
+            <PrintPreview 
+              printUrl={printUrl} 
+              statusMessage={statusMessage}
+              isDevMode={isDevMode}
+              orderNumber={orderNumber}
+              onOrderNumberChange={setOrderNumber}
+              onLoadOrder={handleLoadOrder}
+              error={error}
+            />
+          )}
+        </div>
       </main>
     </div>
   );

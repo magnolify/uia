@@ -7,9 +7,22 @@ import PrintSettings, { PrintSettingsValues } from "./PrintSettings";
 interface PrintPreviewProps {
   printUrl: string;
   statusMessage: string;
+  isDevMode?: boolean;
+  orderNumber?: string;
+  onOrderNumberChange?: (value: string) => void;
+  onLoadOrder?: () => void;
+  error?: string | null;
 }
 
-export default function PrintPreview({ printUrl, statusMessage }: PrintPreviewProps) {
+export default function PrintPreview({ 
+  printUrl, 
+  statusMessage, 
+  isDevMode = false,
+  orderNumber = "",
+  onOrderNumberChange,
+  onLoadOrder,
+  error
+}: PrintPreviewProps) {
   const [printSettings, setPrintSettings] = useState<PrintSettingsValues>({
     marginTop: 0.5,
     marginRight: 0.5,
@@ -87,8 +100,38 @@ export default function PrintPreview({ printUrl, statusMessage }: PrintPreviewPr
     <div className="flex-1 flex flex-col bg-black p-4 h-full">
       <div className="flex items-center justify-between gap-2 bg-[#1a1a1a] border border-[#777] text-gray-400 text-sm px-4 py-2 rounded-t-lg">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <InfoIcon className="w-4 h-4 flex-shrink-0" />
-          <span className="truncate" data-testid="text-status-message">{statusMessage}</span>
+          {isDevMode ? (
+            <>
+              <input
+                type="text"
+                data-testid="input-order-number"
+                value={orderNumber}
+                onChange={(e) => onOrderNumberChange?.(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && onLoadOrder?.()}
+                placeholder="Order Number (e.g., 1217)"
+                className="px-3 py-1.5 bg-gray-900 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-200 placeholder-gray-500 text-sm min-w-0 flex-shrink"
+              />
+              <Button
+                data-testid="button-load-order"
+                onClick={onLoadOrder}
+                size="sm"
+                className="gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold flex-shrink-0"
+              >
+                Load Order
+              </Button>
+              <div className="flex items-center gap-2 flex-1 min-w-0 ml-2">
+                <InfoIcon className="w-4 h-4 flex-shrink-0" />
+                <span className="truncate" data-testid="text-status-message">
+                  {error ? <span className="text-red-400">{error}</span> : statusMessage}
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <InfoIcon className="w-4 h-4 flex-shrink-0" />
+              <span className="truncate" data-testid="text-status-message">{statusMessage}</span>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <PrintSettings onApply={handleApplySettings} />
