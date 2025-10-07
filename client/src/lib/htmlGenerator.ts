@@ -162,7 +162,7 @@ export function generateReportCardHTML(order: ShopifyOrder): string {
 
     body {
       font-family: 'Inter', sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: #1f2937;
+      background-color: #000000;
       margin: 0;
       padding: 1.5rem;
       -webkit-font-smoothing: antialiased;
@@ -172,7 +172,9 @@ export function generateReportCardHTML(order: ShopifyOrder): string {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 1.5rem;
+      gap: 10px;
+      padding-left: 10px;
+      padding-right: 10px;
     }
 
     .card {
