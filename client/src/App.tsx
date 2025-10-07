@@ -10,6 +10,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={ReportCardGenerator} />
+      <Route path="/:orderNumber" component={ReportCardGenerator} />
       <Route component={NotFound} />
     </Switch>
   );
