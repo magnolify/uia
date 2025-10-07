@@ -3,65 +3,178 @@ import { ShopifyOrder } from "@shared/schema";
 import { SAMPLE_ORDER } from "@/lib/constants";
 import { generateReportCardHTML } from "@/lib/htmlGenerator";
 import Header from "@/components/Header";
-import OrderInput from "@/components/OrderInput";
 import PrintPreview from "@/components/PrintPreview";
+import SettingsPanel, { RenderMode } from "@/components/SettingsPanel";
+import OrderInput from "@/components/OrderInput";
+
+// Define the shape of the mock Shopify global
+declare global {
+  interface Window {
+    shopify: {
+      data: {
+        selected: { id: number }[];
+      };
+      i18n: {
+        translate: (key: string, replacements?: Record<string, string | number>) => string;
+      };
+    };
+  }
+}
 
 export default function ReportCardGenerator() {
   const [order, setOrder] = useState<ShopifyOrder | null>(null);
-  const [htmlContent, setHtmlContent] = useState<string | null>(null);
-  const [isDevMode, setIsDevMode] = useState(false);
+  const [printUrl, setPrintUrl] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string>("Initializing...");
+  const [isDevMode, setIsDevMode] = useState<boolean>(false);
 
-  // Check for dev mode on mount
+  // Dev Mode State
+  const [orderJson, setOrderJson] = useState<string>(
+    JSON.stringify({ order: SAMPLE_ORDER }, null, 2)
+  );
+  const [renderMode, setRenderMode] = useState<RenderMode>(RenderMode.DATA_URL);
+  const [serverUrl, setServerUrl] = useState<string>("");
+
+  // 1. Check for Dev Mode on initial render
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const devMode = params.get("dev") === "true";
-    setIsDevMode(devMode);
+    const devModeEnabled = params.get("dev") === "true";
+    setIsDevMode(devModeEnabled);
 
-    // In live mode, try to load order from Shopify (mock for now)
-    if (!devMode) {
-      // TODO: Replace with actual Shopify API integration
-      // For now, load sample order in live mode
-      console.log("Live mode: Loading order from Shopify...");
-      setOrder(SAMPLE_ORDER);
+    if (devModeEnabled) {
+      setStatusMessage("Developer mode active. Paste order JSON and click Generate.");
+    } else {
+      setStatusMessage("Loading order data...");
     }
   }, []);
 
-  // Generate HTML when order changes
+  // 2. Load data in Live Mode
+  useEffect(() => {
+    if (isDevMode) return; // Don't run in dev mode
+
+    try {
+      const selectedItems = window.shopify?.data?.selected;
+      if (!selectedItems || selectedItems.length === 0) {
+        throw new Error("No order selected in Shopify Admin.");
+      }
+      const orderId = selectedItems[0].id;
+
+      if (orderId === SAMPLE_ORDER.id) {
+        setOrder(SAMPLE_ORDER);
+        setStatusMessage(`Loaded data for order #${SAMPLE_ORDER.order_number}.`);
+      } else {
+        throw new Error(
+          `Order with ID ${orderId} not found. Only sample order ${SAMPLE_ORDER.id} is supported.`
+        );
+      }
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : "An unknown error occurred.";
+      setError(errorMessage);
+      setOrder(null);
+      setStatusMessage("Failed to load order data.");
+    }
+  }, [isDevMode]);
+
+  // 3. Generate printable HTML when order data is available
   useEffect(() => {
     if (order) {
-      const html = generateReportCardHTML(order);
-      setHtmlContent(html);
+      setStatusMessage("Generating print preview...");
+      try {
+        const htmlContent = generateReportCardHTML(order);
+        const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`;
+        setPrintUrl(dataUrl);
+        setStatusMessage(`Successfully generated report cards for order ${order.name}.`);
+      } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : "Failed to generate HTML.";
+        setError(errorMessage);
+        setPrintUrl("");
+        setStatusMessage("HTML generation failed.");
+      }
+    } else {
+      // Clear preview if order is cleared
+      setPrintUrl("");
     }
   }, [order]);
 
-  const handleGenerate = (generatedOrder: ShopifyOrder) => {
-    setOrder(generatedOrder);
+  // 4. Handle report card generation in Dev Mode
+  const handleGenerate = () => {
+    setError(null);
+    setOrder(null);
+
+    if (!orderJson.trim()) {
+      setError("JSON input cannot be empty.");
+      setStatusMessage("Error: JSON input is empty.");
+      return;
+    }
+
+    try {
+      let parsedJson = JSON.parse(orderJson);
+      let orderData: ShopifyOrder;
+
+      // Check if the pasted JSON is wrapped in an "order" key
+      if (
+        parsedJson.hasOwnProperty("order") &&
+        typeof parsedJson.order === "object" &&
+        parsedJson.order !== null
+      ) {
+        orderData = parsedJson.order as ShopifyOrder;
+      } else {
+        orderData = parsedJson as ShopifyOrder;
+      }
+
+      // Basic validation
+      if (!orderData.id || !orderData.line_items) {
+        throw new Error(
+          'Invalid or incomplete order JSON. Missing required fields like "id" or "line_items".'
+        );
+      }
+      setOrder(orderData);
+    } catch (e) {
+      const errorMessage =
+        e instanceof Error
+          ? `JSON Parse Error: ${e.message}`
+          : "An unknown error occurred while parsing JSON.";
+      setError(errorMessage);
+      setStatusMessage("Error: Failed to parse JSON.");
+    }
   };
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen bg-black text-gray-100 font-['Vazirmatn',_sans-serif]">
       <Header isDevMode={isDevMode} />
-      
-      {isDevMode ? (
-        <div className="flex flex-1 overflow-hidden">
-          {/* Left Panel - JSON Input */}
-          <div className="w-2/5 border-r">
-            <OrderInput
-              onGenerate={handleGenerate}
-              initialValue={JSON.stringify(SAMPLE_ORDER, null, 2)}
-            />
+      <main className="flex-1 flex overflow-hidden">
+        {isDevMode ? (
+          <>
+            <aside className="w-full md:w-1/3 flex flex-col border-r border-[#777] overflow-y-auto">
+              <SettingsPanel
+                renderMode={renderMode}
+                setRenderMode={setRenderMode}
+                serverUrl={serverUrl}
+                setServerUrl={setServerUrl}
+              />
+              <OrderInput
+                orderJson={orderJson}
+                setOrderJson={setOrderJson}
+                onGenerate={handleGenerate}
+                error={error}
+              />
+            </aside>
+            <div className="hidden md:flex md:w-2/3 flex-col">
+              <PrintPreview printUrl={printUrl} statusMessage={statusMessage} />
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {error ? (
+              <div className="m-4 p-4 bg-red-900/50 text-red-300 rounded-lg flex items-center justify-center text-center h-full">
+                <p>{error}</p>
+              </div>
+            ) : (
+              <PrintPreview printUrl={printUrl} statusMessage={statusMessage} />
+            )}
           </div>
-          
-          {/* Right Panel - Preview */}
-          <div className="flex-1">
-            <PrintPreview htmlContent={htmlContent} />
-          </div>
-        </div>
-      ) : (
-        <div className="flex-1">
-          <PrintPreview htmlContent={htmlContent} />
-        </div>
-      )}
+        )}
+      </main>
     </div>
   );
 }

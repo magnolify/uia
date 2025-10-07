@@ -1,37 +1,26 @@
-import { Printer } from "lucide-react";
+import { PrintIcon } from "./icons";
 
 interface HeaderProps {
-  isDevMode: boolean;
+  isDevMode?: boolean;
 }
 
 export default function Header({ isDevMode }: HeaderProps) {
   return (
-    <header className="border-b bg-card">
-      <div className="flex items-center justify-between p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary">
-            <Printer className="w-6 h-6 text-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="text-lg font-semibold text-foreground" data-testid="text-app-title">
-              Shopify Report Card Generator
+    <header className="flex items-center justify-between p-4 border-b border-[#777] bg-[#1a1a1a] shadow-md">
+      <div className="flex items-center gap-3">
+        <PrintIcon className="w-8 h-8 text-[#f2633a]" />
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-bold text-white font-['Archivo',_sans-serif]" data-testid="text-app-title">
+              Report Card Generator
             </h1>
-            <p className="text-sm text-muted-foreground">
-              Generate printable labels for order fulfillment
-            </p>
+            {isDevMode && (
+              <span className="text-xs bg-yellow-500/20 text-yellow-300 font-mono px-2 py-0.5 rounded-full" data-testid="badge-dev-mode">
+                DEV
+              </span>
+            )}
           </div>
-        </div>
-        <div className="flex items-center gap-3">
-          {isDevMode && (
-            <div className="px-3 py-1 text-xs font-medium rounded-full bg-chart-2/20 text-chart-2" data-testid="badge-dev-mode">
-              Developer Mode
-            </div>
-          )}
-          {!isDevMode && (
-            <div className="px-3 py-1 text-xs font-medium rounded-full bg-primary/20 text-primary" data-testid="badge-live-mode">
-              Live Mode
-            </div>
-          )}
+          <p className="text-sm text-gray-400">Shopify Admin Print Extension</p>
         </div>
       </div>
     </header>

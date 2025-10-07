@@ -1,56 +1,30 @@
-import { FileText, Loader2 } from "lucide-react";
+import { InfoIcon } from "./icons";
 
 interface PrintPreviewProps {
-  htmlContent: string | null;
-  isLoading?: boolean;
+  printUrl: string;
+  statusMessage: string;
 }
 
-export default function PrintPreview({ htmlContent, isLoading = false }: PrintPreviewProps) {
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full bg-card">
-        <Loader2 className="w-12 h-12 text-primary animate-spin" />
-        <p className="mt-4 text-sm text-muted-foreground">Generating preview...</p>
-      </div>
-    );
-  }
-
-  if (!htmlContent) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full bg-card">
-        <div className="flex items-center justify-center w-20 h-20 rounded-full bg-muted">
-          <FileText className="w-10 h-10 text-muted-foreground" />
-        </div>
-        <h3 className="mt-6 text-lg font-semibold text-foreground">No Preview Available</h3>
-        <p className="mt-2 text-sm text-center text-muted-foreground max-w-sm">
-          Enter order JSON and click "Generate Report Cards" to see the printable labels preview
-        </p>
-      </div>
-    );
-  }
-
-  // Create data URL for iframe
-  const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`;
-
+export default function PrintPreview({ printUrl, statusMessage }: PrintPreviewProps) {
   return (
-    <div className="flex flex-col h-full bg-card">
-      <div className="flex items-center gap-2 p-4 border-b">
-        <FileText className="w-5 h-5 text-muted-foreground" />
-        <h2 className="text-sm font-semibold text-foreground">Print Preview</h2>
-        <div className="ml-auto">
-          <span className="text-xs text-muted-foreground">
-            Click "Print Labels" button inside preview to print
-          </span>
-        </div>
+    <div className="flex-1 flex flex-col bg-black p-4 h-full">
+      <div className="flex items-center gap-2 bg-[#1a1a1a] border border-[#777] text-gray-400 text-sm px-4 py-2 rounded-t-lg">
+        <InfoIcon className="w-4 h-4 flex-shrink-0" />
+        <span className="truncate" data-testid="text-status-message">{statusMessage}</span>
       </div>
-      
-      <div className="flex-1 p-4">
-        <iframe
-          src={dataUrl}
-          className="w-full h-full border rounded-lg shadow-lg"
-          title="Print Preview"
-          data-testid="iframe-print-preview"
-        />
+      <div className="flex-1 border border-t-0 border-[#777] rounded-b-lg overflow-hidden bg-gray-800">
+        {printUrl ? (
+          <iframe
+            src={printUrl}
+            title="Print Preview"
+            className="w-full h-full border-0"
+            data-testid="iframe-print-preview"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gray-800">
+            <p className="text-gray-500">Print preview will appear here.</p>
+          </div>
+        )}
       </div>
     </div>
   );
