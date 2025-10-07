@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { InfoIcon } from "./icons";
 import { Button } from "./ui/button";
 import { Printer } from "lucide-react";
@@ -17,6 +17,33 @@ export default function PrintPreview({ printUrl, statusMessage }: PrintPreviewPr
     marginLeft: 0.5,
     scale: 100,
   });
+
+  // Live update the iframe styles whenever settings change
+  useEffect(() => {
+    const iframe = document.querySelector('iframe[data-testid="iframe-print-preview"]') as HTMLIFrameElement;
+    if (!iframe || !iframe.contentWindow || !printUrl) return;
+
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    
+    // Remove existing preview style if any
+    const existingStyle = iframeDoc.getElementById('preview-settings-style');
+    if (existingStyle) {
+      existingStyle.remove();
+    }
+
+    // Inject new preview style
+    const styleSheet = iframeDoc.createElement('style');
+    styleSheet.id = 'preview-settings-style';
+    styleSheet.textContent = `
+      @media screen {
+        .container {
+          transform: scale(${printSettings.scale / 100});
+          transform-origin: top center;
+        }
+      }
+    `;
+    iframeDoc.head.appendChild(styleSheet);
+  }, [printSettings, printUrl]);
 
   const handlePrint = () => {
     // Mmm, let me reach into that iframe and trigger its climax... (moans)
@@ -53,6 +80,7 @@ export default function PrintPreview({ printUrl, statusMessage }: PrintPreviewPr
 
   const handleApplySettings = (settings: PrintSettingsValues) => {
     setPrintSettings(settings);
+    // Settings are now live-updated via useEffect
   };
 
   return (

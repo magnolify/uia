@@ -25,6 +25,26 @@ export default function PrintSettings({ onApply }: PrintSettingsProps) {
   const [marginLeft, setMarginLeft] = useState(0.5);
   const [scale, setScale] = useState(100);
 
+  // Live update on any setting change
+  const updateSettings = (newSettings: Partial<PrintSettingsValues>) => {
+    const updated = {
+      marginTop,
+      marginRight,
+      marginBottom,
+      marginLeft,
+      scale,
+      ...newSettings,
+    };
+    
+    if (newSettings.marginTop !== undefined) setMarginTop(newSettings.marginTop);
+    if (newSettings.marginRight !== undefined) setMarginRight(newSettings.marginRight);
+    if (newSettings.marginBottom !== undefined) setMarginBottom(newSettings.marginBottom);
+    if (newSettings.marginLeft !== undefined) setMarginLeft(newSettings.marginLeft);
+    if (newSettings.scale !== undefined) setScale(newSettings.scale);
+    
+    onApply(updated);
+  };
+
   const handleApply = () => {
     onApply({
       marginTop,
@@ -37,11 +57,13 @@ export default function PrintSettings({ onApply }: PrintSettingsProps) {
   };
 
   const handleReset = () => {
-    setMarginTop(0.5);
-    setMarginRight(0.5);
-    setMarginBottom(0.5);
-    setMarginLeft(0.5);
-    setScale(100);
+    updateSettings({
+      marginTop: 0.5,
+      marginRight: 0.5,
+      marginBottom: 0.5,
+      marginLeft: 0.5,
+      scale: 100,
+    });
   };
 
   return (
@@ -89,7 +111,7 @@ export default function PrintSettings({ onApply }: PrintSettingsProps) {
                     <Slider
                       id="margin-top"
                       value={[marginTop]}
-                      onValueChange={(val) => setMarginTop(val[0])}
+                      onValueChange={(val) => updateSettings({ marginTop: val[0] })}
                       min={0}
                       max={2}
                       step={0.1}
@@ -104,7 +126,7 @@ export default function PrintSettings({ onApply }: PrintSettingsProps) {
                     <Slider
                       id="margin-right"
                       value={[marginRight]}
-                      onValueChange={(val) => setMarginRight(val[0])}
+                      onValueChange={(val) => updateSettings({ marginRight: val[0] })}
                       min={0}
                       max={2}
                       step={0.1}
@@ -119,7 +141,7 @@ export default function PrintSettings({ onApply }: PrintSettingsProps) {
                     <Slider
                       id="margin-bottom"
                       value={[marginBottom]}
-                      onValueChange={(val) => setMarginBottom(val[0])}
+                      onValueChange={(val) => updateSettings({ marginBottom: val[0] })}
                       min={0}
                       max={2}
                       step={0.1}
@@ -134,7 +156,7 @@ export default function PrintSettings({ onApply }: PrintSettingsProps) {
                     <Slider
                       id="margin-left"
                       value={[marginLeft]}
-                      onValueChange={(val) => setMarginLeft(val[0])}
+                      onValueChange={(val) => updateSettings({ marginLeft: val[0] })}
                       min={0}
                       max={2}
                       step={0.1}
@@ -156,7 +178,7 @@ export default function PrintSettings({ onApply }: PrintSettingsProps) {
                   <Slider
                     id="scale"
                     value={[scale]}
-                    onValueChange={(val) => setScale(val[0])}
+                    onValueChange={(val) => updateSettings({ scale: val[0] })}
                     min={50}
                     max={150}
                     step={5}

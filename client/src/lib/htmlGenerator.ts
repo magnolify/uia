@@ -1,4 +1,3 @@
-
 import { ShopifyOrder, ShopifyLineItem, ShopifyLineItemProperty } from "@shared/schema";
 
 const escapeHtml = (unsafe: string | null | undefined): string => {
@@ -14,7 +13,7 @@ const escapeHtml = (unsafe: string | null | undefined): string => {
 };
 
 const findPropertyValue = (properties: ShopifyLineItemProperty[], name: string): string => {
-  const prop = properties.find(p => 
+  const prop = properties.find(p =>
     p.name.trim().toLowerCase() === name.trim().toLowerCase()
   );
   return prop?.value?.trim() || '';
@@ -56,7 +55,7 @@ const parseTitleForLabel = (item: ShopifyLineItem): string => {
     finalDescription += `${dimensions} - `;
   }
   finalDescription += productName;
-  
+
   if (location) {
     finalDescription += ` - ${location}`;
   }
@@ -115,13 +114,13 @@ export function generateReportCardHTML(order: ShopifyOrder): string {
   const cardsHtml = order.line_items.flatMap((item: ShopifyLineItem) => {
     const padDescription = parseTitleForLabel(item);
     const projectName = findPropertyValue(item.properties, 'Project Name');
-    
+
     return Array.from({ length: item.quantity }, (_, i) => `
       <div class="card">
         <div class="logo">
           <img src="https://www.itsunderitall.com/cdn/shop/files/UnderItAll_Logo_FeltGrey_350x.png?v=1720724526" alt="UNDERITALL Logo">
         </div>
-        
+
         <div class="info-grid">
           <div class="info-left">
             <div><span class="label">Client Name:</span> ${clientName}</div>
@@ -132,15 +131,15 @@ export function generateReportCardHTML(order: ShopifyOrder): string {
             <div><span class="label">Project Name:</span> ${escapeHtml(projectName)}</div>
           </div>
         </div>
-        
+
         <hr />
-        
+
         <div class="pad-description">
           ${padDescription}
         </div>
-        
+
         <hr />
-        
+
         <div class="footer">
           <div class="thank-you">THANK YOU FOR YOUR ORDER !</div>
           <div class="contact-info">
@@ -160,7 +159,7 @@ export function generateReportCardHTML(order: ShopifyOrder): string {
   <title>Report Cards for Order ${escapeHtml(order.name)}</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    
+
     body {
       font-family: 'Inter', sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background-color: #1f2937;
@@ -188,6 +187,13 @@ export function generateReportCardHTML(order: ShopifyOrder): string {
       box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
       page-break-inside: avoid;
       color: #111827;
+      transform-origin: top center;
+    }
+
+    @media screen and (max-width: 8.5in) {
+      .card {
+        transform: scale(calc(100vw / 8.5in));
+      }
     }
 
     .logo {
@@ -216,7 +222,7 @@ export function generateReportCardHTML(order: ShopifyOrder): string {
     .info-left div, .info-right div {
       margin-bottom: 6px;
     }
-    
+
     .info-grid .label {
       display: inline-block;
       width: 110px;
@@ -241,14 +247,14 @@ export function generateReportCardHTML(order: ShopifyOrder): string {
       color: #111827;
       line-height: 1.2;
     }
-    
+
     .header-card .header-content {
       flex-grow: 1;
       display: flex;
       flex-direction: column;
       justify-content: center;
     }
-    
+
     .header-title {
       text-align: center;
       font-size: 36px;
@@ -262,13 +268,13 @@ export function generateReportCardHTML(order: ShopifyOrder): string {
       justify-content: space-between;
       margin-bottom: 24px;
     }
-    
+
     .info-col {
       font-size: 16px;
       font-weight: 600;
       width: 48%;
     }
-    
+
     .info-item {
       margin-bottom: 8px;
     }
@@ -284,7 +290,7 @@ export function generateReportCardHTML(order: ShopifyOrder): string {
       font-weight: 600;
       line-height: 1.5;
     }
-    
+
     .footer {
       text-align: center;
     }
