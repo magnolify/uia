@@ -104,12 +104,12 @@ const generateOrderHeaderHTML = (order: ShopifyOrder): string => {
   `;
 };
 
-export function generateReportCardHTML(order: ShopifyOrder): string {
+export function generateReportCardHTML(order: ShopifyOrder, hideHeader: boolean = false): string {
   const clientName = escapeHtml(order.shipping_address?.name || `${order.customer?.first_name || ''} ${order.customer?.last_name || ''}`.trim());
   const poNumber = escapeHtml(order.name);
   const packagedDate = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' });
 
-  const orderHeaderHtml = generateOrderHeaderHTML(order);
+  const orderHeaderHtml = hideHeader ? '' : generateOrderHeaderHTML(order);
 
   const cardsHtml = order.line_items.flatMap((item: ShopifyLineItem) => {
     const padDescription = parseTitleForLabel(item);

@@ -1,0 +1,25 @@
+
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+name = "report-card-generator"
+client_id = "YOUR_CLIENT_ID_HERE"
+application_url = "https://YOUR_REPL_URL.replit.app"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+dev_store_url = "YOUR_DEV_STORE.myshopify.com"
+
+[access_scopes]
+scopes = "read_orders"
+
+[auth]
+redirect_urls = [
+  "https://YOUR_REPL_URL.replit.app/auth/callback"
+]
+
+[webhooks]
+api_version = "2025-01"
+
+[pos]
+embedded = false
