@@ -1,0 +1,5 @@
+{
+  "name": "Shopify Report Card Generator",
+  "description": "An application to generate printable 'Report Cards' (line-item labels) from a Shopify order JSON payload, designed to speed up fulfillment.",
+  "requestFramePermissions": []
+}
